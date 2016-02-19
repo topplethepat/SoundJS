@@ -112,6 +112,10 @@
 			   value="Stop All"/>
 		<input id="muteAllSoundsBtn" name="muteAll" type="button"
 			   value="Mute All"/>
+		<br /><input id="logInstancesBtn" name="logInstances" type="button"
+			   value="Log Instances" />
+		<input id="playOnceToggle" name="playOnce" type="checkbox"
+			   value="Play Once" /><label for="playOnceToggle">Play Once</label>
 
 		<br/>
 		<br/>
@@ -355,6 +359,9 @@
 			createjs.Sound.muted = muted;
 			$("#muteAllSoundsBtn").attr("value", muted ? "Unmute All Sounds" : "Mute All Sounds");
 		});
+		$("#logInstancesBtn").click(function(event) {
+			console.log(createjs.Sound._instances.length);
+		})
 
 		$(".masterVolumeSlider").on('slidestop', function (event) {
 			var value = $(this).slider("option", "value");
@@ -579,6 +586,8 @@
 			playProps.startTime = null;
 			playProps.duration = null;
 		}
+		playProps.playOnce = $("#playOnceToggle").attr("checked") == "checked";
+		console.log("PLAY", playProps.playOnce);
 
 		for (var i = 0, l = list.options.length; i < l; i++) {
 			if (!list.options[i].selected) {
@@ -587,13 +596,17 @@
 			var item = list.options[i];
 
 			var instance = createjs.Sound.createInstance(item.value, playProps.startTime, playProps.duration);
-			instance.handleSuccessProxy = createjs.proxy(handlePlaySuccess, instance);	// OJR kind of hacky
-			instance.addEventListener("succeeded", instance.handleSuccessProxy);
+			instance.on("succeeded", handlePlaySuccess, instance);
 			//instance.addEventListener("interrupted", createjs.proxy(handlePlayFailed,instance));
 			//instance.addEventListener("failed", createjs.proxy(handlePlayFailed,instance));
-			//instance.addEventListener("complete", createjs.proxy(handleSoundComplete,instance));
+			//instance.on("complete", handleSoundComplete, instance));
+
 
 			instance.play(playProps);
+
+			instance.on("complete", function() {
+				console.log(createjs.Sound._instances.length);
+			}, null, true);
 		}
 	}
 

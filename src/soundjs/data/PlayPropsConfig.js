@@ -137,6 +137,8 @@ this.createjs = this.createjs || {};
 		 * @default null
 		 */
 		this.duration = null;
+
+		this.playOnce = false;
 	};
 	var p = PlayPropsConfig.prototype = {};
 	var s = PlayPropsConfig;

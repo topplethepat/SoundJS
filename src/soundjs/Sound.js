@@ -1284,16 +1284,20 @@ this.createjs = this.createjs || {};
 	 * @return {AbstractSoundInstance} A {{#crossLink "AbstractSoundInstance"}}{{/crossLink}} that can be controlled after it is created.
 	 * @static
 	 */
-	s.play = function (src, interrupt, delay, offset, loop, volume, pan, startTime, duration) {
+	s.play = function (src, interrupt, delay, offset, loop, volume, pan, startTime, duration, playOnce) {
 		var playProps;
 		if (interrupt instanceof Object || interrupt instanceof createjs.PlayPropsConfig) {
 			playProps = createjs.PlayPropsConfig.create(interrupt);
 		} else {
-			playProps = createjs.PlayPropsConfig.create({interrupt:interrupt, delay:delay, offset:offset, loop:loop, volume:volume, pan:pan, startTime:startTime, duration:duration});
+			playProps = createjs.PlayPropsConfig.create({interrupt:interrupt, delay:delay, offset:offset, loop:loop,
+							volume:volume, pan:pan, startTime:startTime, duration:duration, playOnce:playOnce});
 		}
 		var instance = s.createInstance(src, playProps.startTime, playProps.duration);
 		var ok = s._playInstance(instance, playProps);
-		if (!ok) {instance._playFailed();}
+		if (!ok) {
+			instance._playFailed();
+			if (playProps.playOnce) { s._playFinished(instance); }
+		}
 		return instance;
 	};
 
@@ -1492,7 +1496,7 @@ this.createjs = this.createjs || {};
 
 		if (playProps.delay == 0) {
 			var ok = s._beginPlaying(instance, playProps);
-			if (!ok) {return false;}
+			if (!ok) { return false; }
 		} else {
 			//Note that we can't pass arguments to proxy OR setTimeout (IE only), so just wrap the function call.
 			// OJR WebAudio may want to handle this differently, so it might make sense to move this functionality into the plugins in the future
@@ -1519,15 +1523,25 @@ this.createjs = this.createjs || {};
 	 */
 	s._beginPlaying = function (instance, playProps) {
 		if (!SoundChannel.add(instance, playProps.interrupt)) {
+			if (playProps.playOnce) {s._playFinished(instance);}
 			return false;
 		}
 		var result = instance._beginPlaying(playProps);
 		if (!result) {
 			var index = createjs.indexOf(this._instances, instance);
-			if (index > -1) {this._instances.splice(index, 1);}
+			if (index > -1) {this._playFinished(instance);}
 			return false;
 		}
+
+		// Auto-remove once finished
+		if (playProps.playOnce) {
+			instance.on("complete", s._instanceComplete, this, true);
+		}
 		return true;
+	};
+
+	s._instanceComplete = function(event) {
+		s._playFinished(event.target);
 	};
 
 	/**
